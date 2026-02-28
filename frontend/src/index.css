@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark text-white font-sans;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar for sleek UI */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-darker;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-panel-hover rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/50;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-panel/80 backdrop-blur-xl border border-white/5 rounded-2xl hover:border-primary/20 transition-all duration-500 shadow-xl shadow-black/40;
+  }
+
+  .market-card {
+    @apply glass-card p-6 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/10;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-dark font-medium rounded-xl hover:shadow-[0_0_20px_rgba(159,254,106,0.3)] hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-panel-hover text-gray-300 font-medium rounded-xl border border-white/5 hover:bg-white/5 hover:text-white transition-all duration-300 flex items-center justify-center gap-2;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-primaryDark bg-clip-text text-transparent;
+  }
+
+  .pulse-glow {
+    @apply animate-pulse shadow-[0_0_30px_rgba(159,254,106,0.3)];
+  }
+  
+  .glass-panel {
+    @apply bg-[#081a11]/90 backdrop-blur-2xl border border-white/5 rounded-3xl overflow-hidden;
+  }
+}
+
+* {
+  @apply transition-colors duration-300;
+}
+
