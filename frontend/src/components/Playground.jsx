@@ -28,7 +28,7 @@ export const Playground = () => {
   const [liveTicks, setLiveTicks] = useState([]); // {time, price}
   const dataFetchRef = useRef(null);
 
-  const API_BASE = 'http://localhost:3000/api';
+  const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
   // Fetch data periodically
   useEffect(() => {
@@ -98,7 +98,7 @@ export const Playground = () => {
     // live exchange fetcher (CoinPaprika, optional)
     const fetchLive = async () => {
       try {
-        const resp = await fetch('http://localhost:3000/api/live/exchanges?quotes=BNB');
+        const resp = await fetch(`${API_BASE}/live/exchanges?quotes=BNB`);
         const json = await resp.json();
         setLiveExchanges(Array.isArray(json) ? json : []);
         setLiveError(null);
@@ -111,7 +111,7 @@ export const Playground = () => {
     // live price from CoinGecko
     const fetchTicker = async () => {
       try {
-        const resp = await fetch('http://localhost:3000/api/gecko/price?ids=binancecoin&vs_currencies=usd');
+        const resp = await fetch(`${API_BASE}/gecko/price?ids=binancecoin&vs_currencies=usd`);
         const json = await resp.json();
         const price = json?.binancecoin?.usd;
         if (price) {

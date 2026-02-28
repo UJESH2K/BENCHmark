@@ -8,7 +8,9 @@
     "node": "npx hardhat node",
     "deploy": "npx hardhat run --network localhost scripts/deploy.js",
     "deploy:testnet": "npx hardhat run --network bscTestnet scripts/deploy.js",
+    "build": "cd frontend && npm install && npm run build",
     "start": "node backend/orchestrator.js",
+    "dev": "concurrently \"node backend/orchestrator.js\" \"cd frontend && npm run dev\"",
     "test": "npx hardhat test"
   },
   "keywords": [],

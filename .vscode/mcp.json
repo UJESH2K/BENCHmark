@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"CreateOS": {
+			"url": "https://api-createos.nodeops.network/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

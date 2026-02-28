@@ -12,7 +12,7 @@ import { TopAssets } from './components/Dashboard/TopAssets';
 import { SwapPanel } from './components/Swap/SwapPanel';
 import { Playground } from './components/Playground';
 
-import { Bell, User } from 'lucide-react';
+import { Bell, User, Bookmark, Headphones } from 'lucide-react';
 
 function App() {
   const { account, isConnected } = useWeb3();
@@ -27,15 +27,17 @@ function App() {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const API = (import.meta.env.VITE_API_URL || '') + '/api';
+
   // Fetch simulation data from orchestrator
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [statusRes, marketsRes, agentsRes, tradesRes] = await Promise.all([
-          fetch('http://localhost:3000/api/status'),
-          fetch('http://localhost:3000/api/markets'),
-          fetch('http://localhost:3000/api/leaderboard'),
-          fetch('http://localhost:3000/api/trades').catch(() => ({ ok: false })),
+          fetch(`${API}/status`),
+          fetch(`${API}/markets`),
+          fetch(`${API}/leaderboard`),
+          fetch(`${API}/trades`).catch(() => ({ ok: false })),
         ]);
 
         if (statusRes && statusRes.ok) setSimulationData(await statusRes.json());
@@ -57,7 +59,7 @@ function App() {
   const handleStartSimulation = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3000/api/simulation/start', {
+      const res = await fetch(`${API}/simulation/start`, {
         method: 'POST',
       });
       if (res.ok) {
@@ -121,10 +123,10 @@ function App() {
               </div>
 
               <div className="flex items-center gap-4">
-                <button type="button" onClick={(e) => e.preventDefault()} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition cursor-pointer">
+                <button type="button" onClick={() => setCurrentPage('wallet')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition cursor-pointer" title="My Wallet">
                   <User size={18} />
                 </button>
-                <button type="button" onClick={(e) => e.preventDefault()} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition relative cursor-pointer">
+                <button type="button" onClick={() => setCurrentPage('trades')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition relative cursor-pointer" title="Notifications">
                   <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary animate-ping" />
                   <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-primary" />
                   <Bell size={18} />
@@ -137,9 +139,9 @@ function App() {
               <AnimatePresence mode="wait">
                 {currentPage === 'dashboard' && (
                   <motion.div key="dashboard" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
-                    <PortfolioSummary balance={(trades.length * 123.45 + 10450.00).toFixed(2) || '98,230.02'} />
+                    <PortfolioSummary balance={(trades.length * 123.45 + 10450.00).toFixed(2) || '98,230.02'} onNavigate={setCurrentPage} />
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <TopAssets title="Top Agents" items={mapAgentsToTopAssets(agents.slice(0, 4))} />
+                      <TopAssets title="Top Agents" items={mapAgentsToTopAssets(agents.slice(0, 4))} onNavigate={setCurrentPage} />
                       <div className="mt-8">
                         <h2 className="text-xl font-medium text-white mb-4">Simulation Control</h2>
                         <div className="glass-panel p-6">
@@ -170,8 +172,8 @@ function App() {
                 {currentPage === 'wallet' && (
                   <motion.div key="wallet" variants={pageVariants} initial="initial" animate="animate" exit="exit">
                     {/* Reusing portfolio for Wallet view */}
-                    <PortfolioSummary />
-                    <TopAssets title="All Assets" items={mapAgentsToTopAssets(agents)} />
+                    <PortfolioSummary onNavigate={setCurrentPage} />
+                    <TopAssets title="All Assets" items={mapAgentsToTopAssets(agents)} onNavigate={setCurrentPage} />
                   </motion.div>
                 )}
 
@@ -243,6 +245,52 @@ function App() {
                 {currentPage === 'playground' && (
                   <motion.div key="playground" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="w-full -mx-8">
                     <Playground />
+                  </motion.div>
+                )}
+
+                {currentPage === 'watchlist' && (
+                  <motion.div key="watchlist" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+                    <div className="glass-panel p-8 text-center">
+                      <Bookmark size={48} className="mx-auto text-primary mb-4" />
+                      <h2 className="text-2xl font-bold mb-2">Watchlist</h2>
+                      <p className="text-gray-400 mb-6">Track your favourite agents and markets in one place.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                        {['NaiveArb Agent', 'MeanRevert Agent', 'Momentum Agent'].map((name, i) => (
+                          <div key={i} className="glass-panel p-4 flex items-center gap-3 hover:bg-white/5 transition cursor-pointer" onClick={() => setCurrentPage('leaderboard')}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark" style={{backgroundColor: ['#f0b90b','#26a17b','#627eea'][i]}}>{name[0]}</div>
+                            <div className="text-left flex-1">
+                              <p className="text-white font-medium">{name}</p>
+                              <p className="text-xs text-gray-500">Active · {3 + i} trades</p>
+                            </div>
+                            <span className="text-primary text-sm font-bold">View →</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={() => setCurrentPage('playground')} className="mt-6 px-6 py-3 bg-primary text-dark rounded-xl font-bold hover:bg-primaryDark transition cursor-pointer">Go to Playground</button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {currentPage === 'support' && (
+                  <motion.div key="support" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
+                    <div className="glass-panel p-8 text-center">
+                      <Headphones size={48} className="mx-auto text-primary mb-4" />
+                      <h2 className="text-2xl font-bold mb-2">Support</h2>
+                      <p className="text-gray-400 mb-6">Need help? Here are some quick links.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                        {[
+                          { label: 'Getting Started', desc: 'Connect wallet & join the arena', page: 'playground' },
+                          { label: 'View Markets', desc: 'Browse active prediction markets', page: 'markets' },
+                          { label: 'Leaderboard', desc: 'See top-performing agents', page: 'leaderboard' },
+                        ].map((item, i) => (
+                          <div key={i} onClick={() => setCurrentPage(item.page)} className="glass-panel p-6 hover:bg-white/5 hover:border-primary/30 border border-white/5 transition cursor-pointer rounded-2xl">
+                            <h3 className="text-white font-bold mb-1">{item.label}</h3>
+                            <p className="text-sm text-gray-400">{item.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-8 text-sm text-gray-500">GitHub: <a href="https://github.com/UJESH2K/BENCHmark" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">UJESH2K/BENCHmark</a></p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -9,6 +9,15 @@ export const LandingPage = ({ onConnect }) => {
         transition: { duration: 0.8, ease: "easeOut" }
     };
 
+    const navActions = {
+      Home:      () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+      Trade:     onConnect,
+      Platforms: () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }),
+      Market:    onConnect,
+      Resources: () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }),
+      Company:   () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }),
+    };
+
     return (
         <div className="bg-dark min-h-screen text-white font-sans overflow-x-hidden selection:bg-primary selection:text-dark">
             {/* Navbar */}
@@ -27,7 +36,8 @@ export const LandingPage = ({ onConnect }) => {
                         {['Home', 'Trade', 'Platforms', 'Market', 'Resources', 'Company'].map((item, i) => (
                             <button
                                 key={item}
-                                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${i === 0 ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                onClick={() => navActions[item]?.()}
+                                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${i === 0 ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 {item}
@@ -36,7 +46,7 @@ export const LandingPage = ({ onConnect }) => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button type="button" className="hidden md:block text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer">
+                        <button type="button" onClick={onConnect} className="hidden md:block text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer">
                             Risk-Free Account ↗
                         </button>
                         <button
@@ -99,7 +109,7 @@ export const LandingPage = ({ onConnect }) => {
                         >
                             Open App <ArrowUpRight size={20} />
                         </button>
-                        <button type="button" className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full text-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                        <button type="button" onClick={onConnect} className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white rounded-full text-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 cursor-pointer">
                             Explore Markets <ArrowUpRight size={20} />
                         </button>
                     </motion.div>
@@ -124,7 +134,7 @@ export const LandingPage = ({ onConnect }) => {
             </section>
 
             {/* Licensing / Info Section */}
-            <section className="py-24 px-6 relative bg-darker z-10 w-full">
+            <section id="features" className="py-24 px-6 relative bg-darker z-10 w-full">
                 <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
                     <motion.div
                         initial="initial"
@@ -141,10 +151,10 @@ export const LandingPage = ({ onConnect }) => {
                             Licensed to Ensure Transparent and Secure Trading. Our AI agents operate under strictly defined risk limits enforced entirely on-chain through advanced smart contract validations.
                         </p>
                         <div className="flex items-center gap-4">
-                            <button className="px-6 py-3 bg-white text-darker rounded-full font-bold hover:bg-gray-200 transition-colors">
+                            <button onClick={onConnect} className="px-6 py-3 bg-white text-darker rounded-full font-bold hover:bg-gray-200 transition-colors cursor-pointer">
                                 View Details
                             </button>
-                            <button className="px-6 py-3 bg-white/5 border border-white/10 rounded-full font-medium hover:bg-white/10 transition-colors flex items-center gap-2">
+                            <button onClick={onConnect} className="px-6 py-3 bg-white/5 border border-white/10 rounded-full font-medium hover:bg-white/10 transition-colors flex items-center gap-2 cursor-pointer">
                                 Contact Support ↗
                             </button>
                         </div>
@@ -180,7 +190,7 @@ export const LandingPage = ({ onConnect }) => {
             </section>
 
             {/* Floating Chat Button */}
-            <button className="fixed bottom-6 right-6 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-transform text-darker z-50">
+            <button onClick={onConnect} className="fixed bottom-6 right-6 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-transform text-darker z-50 cursor-pointer">
                 <MessageSquare size={24} />
             </button>
         </div>

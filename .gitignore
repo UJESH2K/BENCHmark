@@ -1,5 +1,8 @@
 node_modules/
+frontend/node_modules/
 cache/
-artifacts/
+# Ignore build-info (large) but keep contract ABIs
+artifacts/build-info/
 .env
 *.log
+frontend/dist/

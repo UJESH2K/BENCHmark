@@ -11,7 +11,7 @@ import { predict, prepareFeatures, getSignal } from '../../lib/mlInference';
 
 const INITIAL_CASH = 10_000;   // each agent starts with $10 000
 const TRADE_FRACTION = 0.10;   // trade 10 % of available balance per signal
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
 /* ====================================================================
    AgentArena – orchestrates the concurrent model battle

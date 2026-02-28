@@ -13,7 +13,7 @@ import { ArenaPortfolioChart } from './ArenaPortfolioChart';
 import { FighterCards } from './FighterCards';
 import { validateModel } from '../../lib/mlInference';
 
-const API = 'http://localhost:3000/api';
+const API = (import.meta.env.VITE_API_URL || '') + '/api';
 
 /* ====================================================================
    ArenaLive — Multiplayer model marketplace / arena

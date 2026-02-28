@@ -1,8 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MoreVertical } from 'lucide-react';
 
-export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', percent = '0.23%' }) => {
+export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', percent = '0.23%', onNavigate }) => {
+    const [menuOpen, setMenuOpen] = useState(false);
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -14,9 +16,35 @@ export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', pe
                     <h2 className="text-xl font-medium text-white mb-1">Portfolio summary</h2>
                     <p className="text-sm text-gray-400">Current balance (USDT)</p>
                 </div>
-                <button className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
-                    <MoreVertical size={18} />
-                </button>
+                <div className="relative">
+                    <button onClick={() => setMenuOpen(!menuOpen)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                        <MoreVertical size={18} />
+                    </button>
+                    <AnimatePresence>
+                        {menuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="absolute right-0 top-10 bg-[#12231a] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden min-w-[160px]"
+                            >
+                                {[
+                                    { label: 'View Wallet', page: 'wallet' },
+                                    { label: 'Leaderboard', page: 'leaderboard' },
+                                    { label: 'Go to Playground', page: 'playground' },
+                                ].map((item) => (
+                                    <button
+                                        key={item.page}
+                                        onClick={() => { setMenuOpen(false); onNavigate?.(item.page); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             <div className="z-10 relative mt-4">

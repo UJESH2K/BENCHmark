@@ -16,6 +16,7 @@ const MiniSparkline = ({ data, color }) => {
 
 export const TopAssets = ({
     title = "Top agents",
+    onNavigate,
     items = [
         { name: 'NaiveArb', sub: 'ARB • 102.24', value: '1.2323', change: 2.3, color: '#f0b90b' },
         { name: 'MeanRevert', sub: 'REV • 0.13', value: '23.356', change: -1.43, color: '#ffffff' },
@@ -26,7 +27,7 @@ export const TopAssets = ({
         <div className="mt-8">
             <div className="flex justify-between items-end mb-4 px-1">
                 <h2 className="text-xl font-medium text-white">{title}</h2>
-                <button className="text-sm text-gray-400 hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors">
+                <button onClick={() => onNavigate?.('leaderboard')} className="text-sm text-gray-400 hover:text-white hover:bg-white/5 px-3 py-1 rounded-full transition-colors cursor-pointer">
                     see all
                 </button>
             </div>
@@ -38,6 +39,7 @@ export const TopAssets = ({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
+                        onClick={() => onNavigate?.('leaderboard')}
                         className="flex items-center justify-between p-4 glass-panel hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                         <div className="flex items-center gap-4 w-1/3">

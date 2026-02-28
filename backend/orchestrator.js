@@ -70,6 +70,20 @@ const MARKET_CONFIGS = [
   },
 ];
 
+// ─── RPC availability check ─────────────────────────────────────
+let rpcAvailable = false;
+async function checkRPC() {
+  try {
+    const p = getProvider();
+    await p.getBlockNumber();
+    rpcAvailable = true;
+    console.log('[RPC] Connected to', process.env.RPC_URL || 'http://127.0.0.1:8545');
+  } catch {
+    rpcAvailable = false;
+    console.log('[RPC] No blockchain node available — running in API-only mode (arena + live data still work)');
+  }
+}
+
 // ─── Setup ───────────────────────────────────────────────────────
 async function setupSimulation() {
   console.log("=== AGENTS PLAYGROUND - Setting Up ===\n");
@@ -86,23 +100,28 @@ async function setupSimulation() {
     new MomentumAgent(process.env.AGENT3_PRIVATE_KEY),
   ];
 
-  // 3. Register agents on-chain
-  for (const agent of agents) {
-    await agent.register();
-  }
+  if (rpcAvailable) {
+    // 3. Register agents on-chain
+    for (const agent of agents) {
+      await agent.register();
+    }
 
-  // 4. Fund agents: deployer deposits BNB into vault for each agent
-  const deployer = getSigner(process.env.DEPLOYER_PRIVATE_KEY);
-  const deployerContracts = getContracts(deployer);
+    // 4. Fund agents: deployer deposits BNB into vault for each agent
+    const deployer = getSigner(process.env.DEPLOYER_PRIVATE_KEY);
+    const deployerContracts = getContracts(deployer);
 
-  for (const agent of agents) {
-    console.log(`[Setup] Depositing ${DEPOSIT_AMOUNT_ETH} BNB into vault for agent #${agent.agentId}...`);
-    const tx = await deployerContracts.agentVault.deposit(agent.agentId, {
-      value: ethers.parseEther(DEPOSIT_AMOUNT_ETH),
-    });
-    await tx.wait();
-    const balance = await deployerContracts.agentVault.getAgentBalance(agent.agentId);
-    console.log(`  Vault balance: ${ethers.formatEther(balance)} BNB`);
+    for (const agent of agents) {
+      console.log(`[Setup] Depositing ${DEPOSIT_AMOUNT_ETH} BNB into vault for agent #${agent.agentId}...`);
+      const tx = await deployerContracts.agentVault.deposit(agent.agentId, {
+        value: ethers.parseEther(DEPOSIT_AMOUNT_ETH),
+      });
+      await tx.wait();
+      const balance = await deployerContracts.agentVault.getAgentBalance(agent.agentId);
+      console.log(`  Vault balance: ${ethers.formatEther(balance)} BNB`);
+    }
+  } else {
+    console.log('[Setup] Skipping on-chain registration (no RPC). Agents run in simulated mode.');
+    agents.forEach((a, i) => { a.agentId = i + 1; });
   }
 
   console.log("\n=== Setup Complete ===\n");
@@ -193,6 +212,12 @@ function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // Serve built frontend in production
+  const frontendDist = require('path').join(__dirname, '..', 'frontend', 'dist');
+  if (require('fs').existsSync(frontendDist)) {
+    app.use(express.static(frontendDist));
+  }
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", simulationStatus, currentTick, totalTicks: TOTAL_TICKS });
@@ -219,15 +244,17 @@ function startServer() {
     }
   });
 
-  // Get simulation status
-  app.get("/api/simulation/status", (req, res) => {
+  // Get simulation status (both /api/status and /api/simulation/status)
+  const statusHandler = (req, res) => {
     res.json({
       status: simulationStatus,
       currentTick,
       totalTicks: TOTAL_TICKS,
       isRunning,
     });
-  });
+  };
+  app.get("/api/status", statusHandler);
+  app.get("/api/simulation/status", statusHandler);
 
   // Get markets
   app.get("/api/markets", async (req, res) => {
@@ -238,27 +265,42 @@ function startServer() {
       
       const marketStates = simulator.getMarketStates();
       const markets = [];
-      const contracts = getContracts(getSigner(process.env.DEPLOYER_PRIVATE_KEY));
-      
-      for (const [marketId, state] of marketStates) {
-        try {
-          const market = await contracts.marketRegistry.getMarket(marketId);
-          const yesPool = Number(ethers.formatEther(market.yesPool));
-          const noPool = Number(ethers.formatEther(market.noPool));
-          const impliedYesProb = noPool / (yesPool + noPool) || 0;
-          
+
+      if (rpcAvailable) {
+        const contracts = getContracts(getSigner(process.env.DEPLOYER_PRIVATE_KEY));
+        for (const [marketId, state] of marketStates) {
+          try {
+            const market = await contracts.marketRegistry.getMarket(marketId);
+            const yesPool = Number(ethers.formatEther(market.yesPool));
+            const noPool = Number(ethers.formatEther(market.noPool));
+            const impliedYesProb = noPool / (yesPool + noPool) || 0;
+            markets.push({
+              marketId,
+              question: state.question,
+              trueProbability: state.trueProbability,
+              impliedYesProb,
+              yesPool,
+              noPool,
+              resolved: market.resolved,
+              totalVolume: Number(ethers.formatEther(market.totalVolume)),
+            });
+          } catch (err) {
+            console.error(`Error fetching market ${marketId}:`, err.message);
+          }
+        }
+      } else {
+        // Fallback: use simulated market state
+        for (const [marketId, state] of marketStates) {
           markets.push({
             marketId,
             question: state.question,
             trueProbability: state.trueProbability,
-            impliedYesProb,
-            yesPool,
-            noPool,
-            resolved: market.resolved,
-            totalVolume: Number(ethers.formatEther(market.totalVolume)),
+            impliedYesProb: state.trueProbability,
+            yesPool: 100,
+            noPool: 100,
+            resolved: false,
+            totalVolume: 0,
           });
-        } catch (err) {
-          console.error(`Error fetching market ${marketId}:`, err.message);
         }
       }
       
@@ -475,6 +517,14 @@ function startServer() {
 
 
   const PORT = process.env.PORT || 3000;
+
+  // Catch-all: serve frontend index.html for client-side routing
+  if (require('fs').existsSync(frontendDist)) {
+    app.get('{*path}', (req, res) => {
+      res.sendFile(require('path').join(frontendDist, 'index.html'));
+    });
+  }
+
   app.listen(PORT, () => {
     console.log(`\n🌐 API Server running on http://localhost:${PORT}`);
     console.log(`  POST /api/simulation/start - Start simulation`);
@@ -495,6 +545,7 @@ function startServer() {
 
 // ─── Main ────────────────────────────────────────────────────────
 async function main() {
+  await checkRPC();
   startServer();
 }
 
