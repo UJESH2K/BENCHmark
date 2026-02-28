@@ -525,8 +525,8 @@ function startServer() {
     });
   }
 
-  app.listen(PORT, () => {
-    console.log(`\n🌐 API Server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🌐 API Server running on 0.0.0.0:${PORT}`);
     console.log(`  POST /api/simulation/start - Start simulation`);
     console.log(`  GET  /api/simulation/status - Get status`);
     console.log(`  GET  /api/agents - List agents`);
