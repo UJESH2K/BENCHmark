@@ -2,8 +2,19 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MoreVertical } from 'lucide-react';
 
-export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', percent = '0.23%', onNavigate }) => {
+export const PortfolioSummary = ({
+    balance = '0.00',
+    change = '+0.00',
+    percent = '0.00%',
+    walletBnb = null,
+    bnbPrice = null,
+    fighterCount = 0,
+    currentBnbPrice = null,
+    onNavigate,
+}) => {
     const [menuOpen, setMenuOpen] = useState(false);
+    const displayBalance = typeof balance === 'number' ? balance.toFixed(2) : balance;
+    const isPositive = !String(change).startsWith('-');
 
     return (
         <motion.div
@@ -13,8 +24,12 @@ export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', pe
         >
             <div className="flex justify-between items-start z-10 relative">
                 <div>
-                    <h2 className="text-xl font-medium text-white mb-1">Portfolio summary</h2>
-                    <p className="text-sm text-gray-400">Current balance (USDT)</p>
+                    <h2 className="text-xl font-medium text-white mb-1">Arena Overall Capital</h2>
+                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <span>{fighterCount} active agent{fighterCount !== 1 ? 's' : ''}</span>
+                        {currentBnbPrice && <span>· BNB ${currentBnbPrice.toFixed(2)}</span>}
+                        {walletBnb !== null && <span>· Wallet: {walletBnb.toFixed(4)} BNB</span>}
+                    </div>
                 </div>
                 <div className="relative">
                     <button onClick={() => setMenuOpen(!menuOpen)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -50,12 +65,12 @@ export const PortfolioSummary = ({ balance = '98,230.02', change = '+245.24', pe
             <div className="z-10 relative mt-4">
                 <h1 className="text-5xl font-medium text-white tracking-tight mb-2 flex items-baseline gap-1">
                     <span className="text-3xl text-gray-400">$</span>
-                    {balance.split('.')[0]}
-                    <span className="text-3xl text-gray-400">.{balance.split('.')[1]}</span>
+                    {displayBalance.split('.')[0]}
+                    <span className="text-3xl text-gray-400">.{displayBalance.split('.')[1] || '00'}</span>
                 </h1>
                 <div className="flex items-center gap-3 text-sm font-medium">
-                    <span className="bg-primary/20 text-primary px-2 py-0.5 rounded flex items-center gap-1">
-                        ▲ {percent} (1d)
+                    <span className={`${isPositive ? 'bg-primary/20 text-primary' : 'bg-red-500/20 text-red-400'} px-2 py-0.5 rounded flex items-center gap-1`}>
+                        {isPositive ? '▲' : '▼'} {percent} (1d)
                     </span>
                     <span className="text-gray-300">{change}</span>
                 </div>

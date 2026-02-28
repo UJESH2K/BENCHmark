@@ -26,24 +26,58 @@ function App() {
   const [agents, setAgents] = useState([]);
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [arenaStatus, setArenaStatus] = useState(null);
+  const [arenaLeaderboard, setArenaLeaderboard] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [bnbPrice, setBnbPrice] = useState(null);
 
   const API = (import.meta.env.VITE_API_URL || '') + '/api';
 
-  // Fetch simulation data from orchestrator
+  // Fetch wallet balance when account changes
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!account) return;
+      try {
+        // Try MetaMask provider first
+        if (window.ethereum) {
+          const { ethers } = await import('ethers');
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const bal = await provider.getBalance(account);
+          setWalletBalance(parseFloat(ethers.formatEther(bal)));
+        }
+      } catch (err) {
+        console.error('Balance fetch error:', err);
+      }
+    };
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000);
+    return () => clearInterval(interval);
+  }, [account]);
+
+  // Fetch all data from orchestrator + arena + live prices
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statusRes, marketsRes, agentsRes, tradesRes] = await Promise.all([
-          fetch(`${API}/status`),
-          fetch(`${API}/markets`),
-          fetch(`${API}/leaderboard`),
-          fetch(`${API}/trades`).catch(() => ({ ok: false })),
+        const [statusRes, marketsRes, agentsRes, tradesRes, arenaStatusRes, arenaLbRes, priceRes] = await Promise.all([
+          fetch(`${API}/status`).catch(() => null),
+          fetch(`${API}/markets`).catch(() => null),
+          fetch(`${API}/leaderboard`).catch(() => null),
+          fetch(`${API}/trades`).catch(() => null),
+          fetch(`${API}/arena/status`).catch(() => null),
+          fetch(`${API}/arena/leaderboard`).catch(() => null),
+          fetch(`${API}/gecko/price?ids=binancecoin&vs_currencies=usd`).catch(() => null),
         ]);
 
-        if (statusRes && statusRes.ok) setSimulationData(await statusRes.json());
-        if (marketsRes && marketsRes.ok) setMarkets(await marketsRes.json());
-        if (agentsRes && agentsRes.ok) setAgents(await agentsRes.json());
-        if (tradesRes && tradesRes.ok) setTrades(await tradesRes.json());
+        if (statusRes?.ok) setSimulationData(await statusRes.json());
+        if (marketsRes?.ok) setMarkets(await marketsRes.json());
+        if (agentsRes?.ok) setAgents(await agentsRes.json());
+        if (tradesRes?.ok) setTrades(await tradesRes.json());
+        if (arenaStatusRes?.ok) setArenaStatus(await arenaStatusRes.json());
+        if (arenaLbRes?.ok) setArenaLeaderboard(await arenaLbRes.json());
+        if (priceRes?.ok) {
+          const pj = await priceRes.json();
+          if (pj?.binancecoin?.usd) setBnbPrice(pj.binancecoin.usd);
+        }
       } catch (err) {
         console.error('Error fetching data:', err);
       }
@@ -51,10 +85,16 @@ function App() {
 
     if (userIsConnected) {
       fetchData();
-      const interval = setInterval(fetchData, 2000);
+      const interval = setInterval(fetchData, 5000);
       return () => clearInterval(interval);
     }
   }, [userIsConnected]);
+
+  // Compute real portfolio values from arena
+  const arenaCapital = arenaLeaderboard.reduce((sum, f) => sum + (f.value || 0), 0);
+  const arenaPnl = arenaLeaderboard.reduce((sum, f) => sum + (f.pnl || 0), 0);
+  const arenaPnlPct = arenaCapital > 0 ? ((arenaPnl / (arenaCapital - arenaPnl)) * 100).toFixed(2) : '0.00';
+  const walletUsd = walletBalance !== null && bnbPrice ? (walletBalance * bnbPrice).toFixed(2) : null;
 
   const handleStartSimulation = async () => {
     try {
@@ -78,21 +118,36 @@ function App() {
     exit: { opacity: 0, y: -10, transition: { duration: 0.2 } },
   };
 
-  // Convert agents format for top assets:
-  const mapAgentsToTopAssets = (agentsList) => {
-    const list = agentsList.length ? agentsList : [
-      { agentName: 'NaiveArbAgent', balance: 923.32, activePositions: 2, color: '#f0b90b' },
-      { agentName: 'MeanRevert', balance: 421.11, activePositions: 0, color: '#26a17b' },
-      { agentName: 'Momentum', balance: 1300.99, activePositions: 5, color: '#627eea' },
-    ];
-
-    return list.map((a, i) => ({
-      name: a.agentName || a.name || 'Agent',
-      sub: `ID \u2022 ${a.agentAddress ? a.agentAddress.slice(0, 6) : '0x12..'}`,
-      value: `${(a.balance || 0).toFixed(4)} BNB`,
-      change: parseFloat(((Math.random() * 10) - 4).toFixed(2)), // mock change for UI,
-      color: ['#f0b90b', '#26a17b', '#627eea', '#ec4899', '#8b5cf6'][i % 5]
-    }));
+  // Convert arena leaderboard or simulation agents to TopAssets format
+  const mapToTopAssets = (source) => {
+    // Prefer arena leaderboard (real live data)
+    if (arenaLeaderboard.length > 0) {
+      return arenaLeaderboard.slice(0, source === 'all' ? 20 : 4).map((f, i) => ({
+        name: f.name || `Fighter ${i + 1}`,
+        sub: `${f.wallet?.slice(0, 6)}...${f.wallet?.slice(-4)} \u2022 ${f.tradeCount || 0} trades`,
+        value: `$${f.value?.toFixed(2) || '0.00'}`,
+        change: f.pnlPct || 0,
+        color: f.color || ['#f0b90b', '#26a17b', '#627eea', '#ec4899', '#8b5cf6'][i % 5],
+      }));
+    }
+    // Fallback to simulation agents
+    if (agents.length > 0) {
+      return agents.slice(0, source === 'all' ? 20 : 4).map((a, i) => ({
+        name: a.agentName || a.name || 'Agent',
+        sub: `${a.agentAddress ? a.agentAddress.slice(0, 6) + '...' : 'ID'} \u2022 ${a.totalTrades || 0} trades`,
+        value: `${(a.balance || 0).toFixed(4)} BNB`,
+        change: parseFloat(((Math.random() * 4) - 1).toFixed(2)),
+        color: ['#f0b90b', '#26a17b', '#627eea', '#ec4899', '#8b5cf6'][i % 5],
+      }));
+    }
+    // No data yet
+    return [{
+      name: 'No agents yet',
+      sub: 'Join the arena to start',
+      value: '$0.00',
+      change: 0,
+      color: '#374151',
+    }];
   };
 
   return (
@@ -116,8 +171,11 @@ function App() {
             <header className="h-24 shrink-0 flex items-center justify-between sticky top-0 z-20 bg-[#050b08]/80 backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <h1 className="text-3xl font-medium tracking-tight">
-                  {currentPage === 'dashboard' ? 'Wallet' :
-                    currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}
+                  {currentPage === 'dashboard' ? 'Arena' :
+                    currentPage === 'wallet' ? 'Agent Registry' :
+                      currentPage === 'trades' ? 'Commitments' :
+                        currentPage === 'playground' ? 'Simulation Engine' :
+                          currentPage.charAt(0).toUpperCase() + currentPage.slice(1)}
                 </h1>
                 <WalletConnect />
               </div>
@@ -139,9 +197,18 @@ function App() {
               <AnimatePresence mode="wait">
                 {currentPage === 'dashboard' && (
                   <motion.div key="dashboard" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="space-y-6">
-                    <PortfolioSummary balance={(trades.length * 123.45 + 10450.00).toFixed(2) || '98,230.02'} onNavigate={setCurrentPage} />
+                    <PortfolioSummary
+                      balance={arenaCapital > 0 ? arenaCapital.toFixed(2) : walletUsd || '0.00'}
+                      change={arenaPnl >= 0 ? `+${arenaPnl.toFixed(2)}` : arenaPnl.toFixed(2)}
+                      percent={`${arenaPnlPct}%`}
+                      walletBnb={walletBalance}
+                      bnbPrice={bnbPrice}
+                      fighterCount={arenaLeaderboard.length}
+                      currentBnbPrice={arenaStatus?.currentPrice}
+                      onNavigate={setCurrentPage}
+                    />
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <TopAssets title="Top Agents" items={mapAgentsToTopAssets(agents.slice(0, 4))} onNavigate={setCurrentPage} />
+                      <TopAssets title="Top Agents" items={mapToTopAssets('top')} onNavigate={setCurrentPage} />
                       <div className="mt-8">
                         <h2 className="text-xl font-medium text-white mb-4">Simulation Control</h2>
                         <div className="glass-panel p-6">
@@ -172,8 +239,16 @@ function App() {
                 {currentPage === 'wallet' && (
                   <motion.div key="wallet" variants={pageVariants} initial="initial" animate="animate" exit="exit">
                     {/* Reusing portfolio for Wallet view */}
-                    <PortfolioSummary onNavigate={setCurrentPage} />
-                    <TopAssets title="All Assets" items={mapAgentsToTopAssets(agents)} onNavigate={setCurrentPage} />
+                    <PortfolioSummary
+                      balance={walletUsd || '0.00'}
+                      change={walletBalance !== null ? `${walletBalance.toFixed(4)} BNB` : '--'}
+                      percent={bnbPrice ? `$${bnbPrice.toLocaleString()}/BNB` : '--'}
+                      walletBnb={walletBalance}
+                      bnbPrice={bnbPrice}
+                      fighterCount={arenaLeaderboard.length}
+                      onNavigate={setCurrentPage}
+                    />
+                    <TopAssets title="All Agents" items={mapToTopAssets('all')} onNavigate={setCurrentPage} />
                   </motion.div>
                 )}
 
@@ -257,7 +332,7 @@ function App() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
                         {['NaiveArb Agent', 'MeanRevert Agent', 'Momentum Agent'].map((name, i) => (
                           <div key={i} className="glass-panel p-4 flex items-center gap-3 hover:bg-white/5 transition cursor-pointer" onClick={() => setCurrentPage('leaderboard')}>
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark" style={{backgroundColor: ['#f0b90b','#26a17b','#627eea'][i]}}>{name[0]}</div>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-dark" style={{ backgroundColor: ['#f0b90b', '#26a17b', '#627eea'][i] }}>{name[0]}</div>
                             <div className="text-left flex-1">
                               <p className="text-white font-medium">{name}</p>
                               <p className="text-xs text-gray-500">Active · {3 + i} trades</p>
@@ -301,7 +376,7 @@ function App() {
           </main>
 
           {/* Right Side Swap Panel */}
-          <SwapPanel />
+          <SwapPanel account={account} walletBalance={walletBalance} bnbPrice={bnbPrice} />
 
         </div>
       )}

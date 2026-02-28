@@ -10,19 +10,29 @@ require("dotenv").config();
 class BaseAgent {
   constructor(name, privateKey, riskLimitEth, agentCardURI) {
     this.name = name;
-    this.signer = getSigner(privateKey);
-    this.contracts = getContracts(this.signer);
     this.riskLimitEth = riskLimitEth;
     this.agentCardURI = agentCardURI;
     this.agentId = null;
     this.tradeLog = [];
     this.totalPnL = 0;
     this.positions = new Map(); // marketId => { side: 'YES'|'NO', tokens: number, cost: number }
-    // Get address - signer is wrapped in NonceManager in ethers.js v6
-    // NonceManager has a .signer property that points to the underlying wallet
-    this.agentAddress = this.signer.signer?.address || this.signer.address;
-    if (!this.agentAddress) {
-      throw new Error(`[${this.name}] Failed to extract address from signer`);
+
+    // Gracefully handle missing RPC — allow simulated-only mode
+    try {
+      this.signer = getSigner(privateKey);
+      this.contracts = getContracts(this.signer);
+      this.agentAddress = this.signer.signer?.address || this.signer.address;
+    } catch (err) {
+      console.log(`[${this.name}] Running in simulated mode (no RPC): ${err.message}`);
+      this.signer = null;
+      this.contracts = null;
+      // Derive address from private key without provider
+      try {
+        const wallet = new ethers.Wallet(privateKey);
+        this.agentAddress = wallet.address;
+      } catch {
+        this.agentAddress = `0xSIM${Math.random().toString(16).slice(2, 10)}`;
+      }
     }
   }
 
@@ -76,6 +86,36 @@ class BaseAgent {
    * @param {number} amountEth - amount in ETH/BNB
    */
   async executeTrade(marketId, buyYes, amountEth) {
+    // If no RPC / contracts, run in simulated mode
+    if (!this.contracts) {
+      const tokensReceived = amountEth * (0.8 + Math.random() * 0.4); // simulated fill
+      const tradeEntry = {
+        tick: Date.now(),
+        agentId: this.agentId,
+        agentName: this.name,
+        marketId,
+        side: buyYes ? "YES" : "NO",
+        amount: amountEth,
+        tokensReceived,
+        txHash: `0xsim${Date.now().toString(16)}`,
+        size: amountEth,
+      };
+      this.tradeLog.push(tradeEntry);
+      const existing = this.positions.get(marketId) || { side: null, tokens: 0, cost: 0 };
+      const side = buyYes ? "YES" : "NO";
+      if (existing.side === side || existing.side === null) {
+        existing.side = side;
+        existing.tokens += tokensReceived;
+        existing.cost += amountEth;
+      } else {
+        existing.tokens -= tokensReceived;
+        existing.cost -= amountEth;
+      }
+      this.positions.set(marketId, existing);
+      console.log(`[${this.name}] Sim Trade: ${buyYes ? "BUY YES" : "BUY NO"} on market #${marketId} | ${amountEth} BNB -> ${tokensReceived.toFixed(4)} tokens`);
+      return tradeEntry;
+    }
+
     const amountWei = ethers.parseEther(amountEth.toString());
     try {
       const tx = await this.contracts.tradeProxy.executeTrade(marketId, buyYes, amountWei);

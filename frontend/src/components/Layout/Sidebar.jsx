@@ -1,19 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Wallet, Bookmark, ArrowLeftRight, BarChart2, PieChart, Zap, Headphones, Settings, Bell, User } from 'lucide-react';
+import { LayoutDashboard, Wallet, ArrowLeftRight, PieChart, Zap, Headphones } from 'lucide-react';
 
 export const Sidebar = ({ currentPage, setCurrentPage }) => {
     const mainLinks = [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'wallet', label: 'Wallet', icon: Wallet },
-        { id: 'watchlist', label: 'Watchlist', icon: Bookmark },
-        { id: 'trades', label: 'Transaction', icon: ArrowLeftRight },
+        { id: 'dashboard', label: 'Arena', icon: LayoutDashboard },
+        { id: 'wallet', label: 'Agent Registry', icon: Wallet },
+        { id: 'trades', label: 'Commitments', icon: ArrowLeftRight },
     ];
 
     const insightLinks = [
-        { id: 'markets', label: 'Market', icon: BarChart2 },
         { id: 'leaderboard', label: 'Leaderboard', icon: PieChart },
-        { id: 'playground', label: 'Playground', icon: Zap },
+        { id: 'playground', label: 'Simulation Engine', icon: Zap },
     ];
 
     const toolLinks = [
@@ -35,11 +33,10 @@ export const Sidebar = ({ currentPage, setCurrentPage }) => {
                                 console.log('Clicked:', item.id);
                                 setCurrentPage(item.id);
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300 cursor-pointer ${
-                                isActive
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300 cursor-pointer ${isActive
                                     ? 'bg-primary text-dark font-bold shadow-lg shadow-primary/20 scale-[1.02]'
                                     : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
+                                }`}
                         >
                             <item.icon size={18} />
                             {item.label}
@@ -59,17 +56,15 @@ export const Sidebar = ({ currentPage, setCurrentPage }) => {
         >
             {/* Brand */}
             <div className="flex items-center gap-2 pl-2 mb-10">
-
-                <span className="text-2xl font-bold tracking-tight text-white">AgentsHub</span>
+                <span className="text-2xl font-bold tracking-tight text-white">Agents<span className="text-primary">Playground</span></span>
             </div>
 
             {/* Navigation Sections */}
             <div className="flex-1">
                 {renderSection('MAIN', mainLinks)}
-                {renderSection('INSIGHT', insightLinks)}
+                {renderSection('VALIDATION', insightLinks)}
                 {renderSection('TOOLS', toolLinks)}
             </div>
-
         </motion.aside>
     );
 };
